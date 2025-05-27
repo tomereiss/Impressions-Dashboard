@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const csv = require('csv-parser');
+const { parse } = require('csv-parse/sync');
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -125,7 +125,7 @@ app.get('/api/impressions-count/:date', (req, res) => {
 // Helper function to read CSV file
 const readCSVFile = (filePath) => {
   const fileContent = fs.readFileSync(filePath, 'utf-8');
-  const records = csv.parse(fileContent, {
+  const records = parse(fileContent, {
     columns: true,
     skip_empty_lines: true,
     trim: true
