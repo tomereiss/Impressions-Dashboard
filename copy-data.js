@@ -1,19 +1,28 @@
-const fs = require('fs-extra');
+const fs = require('fs');
 const path = require('path');
 
 // Source and destination directories
-const srcDataDir = path.join(__dirname, 'src', 'data');
-const buildDataDir = path.join(__dirname, 'build', 'data');
+const sourceDir = path.join(__dirname, 'data');
+const destDir = path.join(__dirname, 'build', 'data');
 
-// Ensure the build/data directory exists
-fs.ensureDirSync(buildDataDir);
+// Create destination directory if it doesn't exist
+if (!fs.existsSync(destDir)) {
+  fs.mkdirSync(destDir, { recursive: true });
+}
 
-// Copy the data directory
-fs.copySync(srcDataDir, buildDataDir, {
-  filter: (src) => {
-    // Only copy CSV files
-    return src.endsWith('.csv');
-  }
-});
-
-console.log('Data files copied successfully to build directory!'); 
+// Copy all CSV files from source to destination
+try {
+  const files = fs.readdirSync(sourceDir);
+  files.forEach(file => {
+    if (file.endsWith('.csv')) {
+      const sourcePath = path.join(sourceDir, file);
+      const destPath = path.join(destDir, file);
+      fs.copyFileSync(sourcePath, destPath);
+      console.log(`Copied ${file} to build directory`);
+    }
+  });
+  console.log('Data files copied successfully!');
+} catch (error) {
+  console.error('Error copying data files:', error);
+  process.exit(1);
+} 

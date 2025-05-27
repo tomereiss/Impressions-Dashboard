@@ -5,7 +5,7 @@ import DateSelector from './components/DateSelector';
 import DataTable from './components/DataTable';
 import PartnerAnalytics from './components/PartnerAnalytics';
 import Navigation from './components/Navigation';
-import { API_URL } from './config';
+import { API_BASE_URL } from './config';
 
 const theme = createTheme({
   palette: {
@@ -21,7 +21,7 @@ const DateAnalytics = () => {
   useEffect(() => {
     const fetchAvailableDates = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/available-dates`);
+        const response = await fetch(`${API_BASE_URL}/api/available-dates`);
         if (!response.ok) {
           throw new Error('Failed to fetch dates');
         }
@@ -80,7 +80,7 @@ const AppContent = () => {
   useEffect(() => {
     const fetchAvailableDates = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/available-dates`);
+        const response = await fetch(`${API_BASE_URL}/api/available-dates`);
         if (!response.ok) {
           throw new Error('Failed to fetch dates');
         }

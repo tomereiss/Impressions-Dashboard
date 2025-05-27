@@ -147,7 +147,7 @@ const PartnerAnalytics: React.FC = () => {
   useEffect(() => {
     const fetchAvailableDates = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/available-dates');
+        const response = await fetch(`${API_BASE_URL}/api/available-dates`);
         if (!response.ok) {
           throw new Error('Failed to fetch available dates');
         }
@@ -162,30 +162,129 @@ const PartnerAnalytics: React.FC = () => {
   }, []);
 
   const fetchPartnerData = async () => {
+    if (!searchPartnerId) return;
+
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch impressions count data
-      const impressionsResponse = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
-      if (!impressionsResponse.ok) {
-        throw new Error(`HTTP error! status: ${impressionsResponse.status}`);
-      }
-      const impressionsData = await impressionsResponse.json();
+      const weeklyData: WeeklyDataPoint[] = [];
+      const violationDataArray: ViolationData[] = [];
+      const stats: StatsDataPoint[] = [];
 
-      // Fetch bad impressions data
-      const badImpressionsResponse = await fetch(`${API_BASE_URL}/api/bad-impressions/${date}`);
-      if (!badImpressionsResponse.ok) {
-        throw new Error(`HTTP error! status: ${badImpressionsResponse.status}`);
-      }
-      const badImpressionsData = await badImpressionsResponse.json();
+      console.log('=== Partner Data Analysis ===');
+      console.log('Partner ID:', searchPartnerId);
+      console.log('Available dates:', availableDates);
+      console.log('------------------------');
 
-      // Process and combine the data
-      const processedData = processData(impressionsData, badImpressionsData);
-      setPartnerData(processedData);
+      for (const date of availableDates) {
+        try {
+          // Fetch impressions data
+          const impressionsResponse = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
+          if (impressionsResponse.ok) {
+            const impressionsData = await impressionsResponse.json();
+            const partnerData = impressionsData.find((row: any) => 
+              String(row.partner_id || row.partnerId || row['partner id']).trim() === String(searchPartnerId).trim()
+            );
+            
+            if (partnerData) {
+              console.log(`\nDate: ${formatDateForDisplay(date)}`);
+              console.log('Impressions Data:', {
+                partner_id: partnerData.partner_id || partnerData.partnerId || partnerData['partner id'],
+                impressions_count: partnerData.impressions_count,
+                bad_impressions_count: partnerData.bad_impressions_count,
+                bad_from_total_in_percentage: partnerData.bad_from_total_in_percentage,
+                violation_count: partnerData.violation_count
+              });
+
+              weeklyData.push({
+                date: formatDateForDisplay(date),
+                impressions_count: partnerData.impressions_count,
+                bad_impressions_count: partnerData.bad_impressions_count,
+                bad_from_total_in_percentage: partnerData.bad_from_total_in_percentage,
+                violation_count: partnerData.violation_count
+              });
+
+              const badImpressions = parseInt(partnerData.bad_impressions_count) || 0;
+              const totalImpressions = parseInt(partnerData.impressions_count) || 0;
+              const percentage = totalImpressions > 0 ? (badImpressions / totalImpressions) * 100 : 0;
+              
+              console.log('Calculated daily percentage:', {
+                badImpressions,
+                totalImpressions,
+                percentage: percentage.toFixed(2) + '%'
+              });
+
+              stats.push({
+                date: formatDateForDisplay(date),
+                percentage: parseFloat(percentage.toFixed(2)),
+                totalImpressions,
+                badImpressions
+              });
+            }
+          }
+
+          // Fetch violation data from bad_impressions table
+          const violationsResponse = await fetch(`${API_BASE_URL}/api/bad-impressions/${date}`);
+          if (violationsResponse.ok) {
+            const violationsData = await violationsResponse.json();
+            const partnerViolations = violationsData.filter((row: ViolationRow) => 
+              String(row.partnerId).trim() === String(searchPartnerId).trim()
+            );
+            
+            if (partnerViolations.length > 0) {
+              console.log('\n=== Violations Data Processing ===');
+              console.log('Raw partner violations:', partnerViolations);
+
+              // Process violations directly from the array
+              const violations = partnerViolations.map((v: ViolationRow) => ({
+                type: v.violation,
+                count: parseInt(v.violation_count) || 0
+              })).filter((v: { count: number }) => v.count > 0);
+
+              console.log('Processed violations:', violations);
+
+              const violationsData = {
+                date: formatDateForDisplay(date),
+                totalBadImpressions: violations.reduce((sum: number, v: { count: number }) => sum + v.count, 0),
+                violations
+              };
+              console.log('Final violations data for pie chart:', violationsData);
+              setViolationsDataArray(prev => [...prev, violationsData]);
+            }
+          }
+        } catch (error) {
+          console.error(`Error fetching data for date ${date}:`, error);
+        }
+      }
+
+      console.log('\n=== Summary ===');
+      console.log('Total dates with data:', stats.length);
+      console.log('------------------------');
+
+      // Sort data by date
+      weeklyData.sort((a, b) => {
+        const [dayA, monthA, yearA] = a.date.split('/');
+        const [dayB, monthB, yearB] = b.date.split('/');
+        const dateA = new Date(2000 + parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+        const dateB = new Date(2000 + parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+        return dateA.getTime() - dateB.getTime();
+      });
+
+      violationDataArray.sort((a, b) => {
+        const [dayA, monthA, yearA] = a.date.split('/');
+        const [dayB, monthB, yearB] = b.date.split('/');
+        const dateA = new Date(2000 + parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+        const dateB = new Date(2000 + parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+        return dateA.getTime() - dateB.getTime();
+      });
+
+      setWeeklyData(weeklyData);
+      setViolationData(violationDataArray);
+      setStats(stats);
     } catch (error) {
       console.error('Error fetching partner data:', error);
-      setError('Failed to fetch partner data. Please try again later.');
+      setError('Failed to fetch partner data');
     } finally {
       setLoading(false);
     }

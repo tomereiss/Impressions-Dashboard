@@ -14,7 +14,8 @@ import {
   Box,
   Typography,
   useTheme,
-  Alert
+  Alert,
+  Button
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -110,24 +111,41 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
     });
   }, [data, sortConfig]);
 
+  // Process and combine the data
+  const processData = (impressionsData: any[], badImpressionsData: any[]) => {
+    if (type === 'impressions_stats') {
+      return impressionsData.map(row => ({
+        partner_id: row.partner_id || row.partnerId || row['partner id'],
+        impressions_count: row.impressions_count,
+        bad_impressions_count: row.bad_impressions_count,
+        bad_from_total_in_percentage: row.bad_from_total_in_percentage,
+        violation_count: row.violation_count
+      }));
+    } else {
+      return badImpressionsData.map(row => ({
+        partner_id: row.partnerId,
+        violation: row.violation,
+        violation_count: row.violation_count
+      }));
+    }
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch impressions count data
       console.log('Fetching data from:', `${API_BASE_URL}/api/impressions-count/${date}`);
       const impressionsResponse = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
       if (!impressionsResponse.ok) {
-        throw new Error(`HTTP error! status: ${impressionsResponse.status}`);
+        throw new Error(`Failed to fetch impressions data: ${impressionsResponse.status} ${impressionsResponse.statusText}`);
       }
       const impressionsData = await impressionsResponse.json();
 
-      // Fetch bad impressions data
       console.log('Fetching data from:', `${API_BASE_URL}/api/bad-impressions/${date}`);
       const badImpressionsResponse = await fetch(`${API_BASE_URL}/api/bad-impressions/${date}`);
       if (!badImpressionsResponse.ok) {
-        throw new Error(`HTTP error! status: ${badImpressionsResponse.status}`);
+        throw new Error(`Failed to fetch bad impressions data: ${badImpressionsResponse.status} ${badImpressionsResponse.statusText}`);
       }
       const badImpressionsData = await badImpressionsResponse.json();
 
@@ -136,7 +154,7 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
       setData(processedData);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setError('Failed to fetch data. Please try again later.');
+      setError(error instanceof Error ? error.message : 'Failed to fetch data. Please try again later.');
     } finally {
       setLoading(false);
     }
@@ -156,8 +174,22 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
 
   if (error) {
     return (
-      <Box p={3}>
-        <Alert severity="error">{error}</Alert>
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button 
+          variant="contained" 
+          onClick={fetchData}
+          sx={{ 
+            bgcolor: '#574B60',
+            '&:hover': {
+              bgcolor: '#3F334D',
+            }
+          }}
+        >
+          Retry
+        </Button>
       </Box>
     );
   }
