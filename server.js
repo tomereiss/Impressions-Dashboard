@@ -18,9 +18,6 @@ app.get('/api/available-dates', (req, res) => {
   const badImpressionsDir = path.join(__dirname, 'src', 'data', 'bad-impressions');
   const impressionsCountDir = path.join(__dirname, 'src', 'data', 'impressions-count');
 
-  console.log('Bad impressions files directory:', badImpressionsDir);
-  console.log('Impressions count files directory:', impressionsCountDir);
-
   // Check if directories exist
   if (!fs.existsSync(badImpressionsDir)) {
     console.log('Directory does not exist:', badImpressionsDir);
@@ -31,9 +28,6 @@ app.get('/api/available-dates', (req, res) => {
     return res.status(500).json({ error: 'Impressions count directory not found' });
   }
 
-  console.log('Directory exists:', badImpressionsDir);
-  console.log('Directory exists:', impressionsCountDir);
-
   // Read files from both directories
   const badImpressionsFiles = fs.readdirSync(badImpressionsDir)
     .filter(file => file.endsWith('.csv'))
@@ -42,9 +36,6 @@ app.get('/api/available-dates', (req, res) => {
   const impressionsCountFiles = fs.readdirSync(impressionsCountDir)
     .filter(file => file.endsWith('.csv'))
     .map(file => file.replace('impressions_count_', '').replace('_report.csv', ''));
-
-  console.log('Files in', badImpressionsDir + ':', fs.readdirSync(badImpressionsDir));
-  console.log('Files in', impressionsCountDir + ':', fs.readdirSync(impressionsCountDir));
 
   // Find common dates
   const commonDates = badImpressionsFiles.filter(date => impressionsCountFiles.includes(date));
@@ -108,12 +99,10 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server is running!`);
+// Start the server
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
   console.log(`You can access the server at:`);
   console.log(`- Local: http://localhost:${port}`);
-  console.log(`- Network: http://${process.env.HOST || '0.0.0.0'}:${port}`);
-  console.log('\nData directories:');
-  console.log(`- Bad impressions: ${path.join(__dirname, 'src', 'data', 'bad-impressions')}`);
-  console.log(`- Impressions count: ${path.join(__dirname, 'src', 'data', 'impressions-count')}`);
+  console.log(`- Heroku: https://your-app-name.herokuapp.com`);
 }); 
