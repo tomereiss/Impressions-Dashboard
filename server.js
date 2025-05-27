@@ -15,43 +15,72 @@ app.use(express.static(path.join(__dirname, 'build')));
 
 // API Routes
 app.get('/api/available-dates', (req, res) => {
-  const badImpressionsDir = path.join(__dirname, 'src', 'data', 'bad-impressions');
-  const impressionsCountDir = path.join(__dirname, 'src', 'data', 'impressions-count');
+  // Look for data in both possible locations
+  const possiblePaths = [
+    path.join(__dirname, 'src', 'data'),
+    path.join(__dirname, 'build', 'data')
+  ];
 
-  // Check if directories exist
-  if (!fs.existsSync(badImpressionsDir)) {
-    console.log('Directory does not exist:', badImpressionsDir);
-    return res.status(500).json({ error: 'Bad impressions directory not found' });
+  let badImpressionsDir = null;
+  let impressionsCountDir = null;
+
+  // Find the correct paths
+  for (const basePath of possiblePaths) {
+    const badPath = path.join(basePath, 'bad-impressions');
+    const countPath = path.join(basePath, 'impressions-count');
+    
+    if (fs.existsSync(badPath) && fs.existsSync(countPath)) {
+      badImpressionsDir = badPath;
+      impressionsCountDir = countPath;
+      break;
+    }
   }
-  if (!fs.existsSync(impressionsCountDir)) {
-    console.log('Directory does not exist:', impressionsCountDir);
-    return res.status(500).json({ error: 'Impressions count directory not found' });
+
+  if (!badImpressionsDir || !impressionsCountDir) {
+    console.error('Data directories not found in any location');
+    return res.status(500).json({ error: 'Data directories not found' });
   }
 
-  // Read files from both directories
-  const badImpressionsFiles = fs.readdirSync(badImpressionsDir)
-    .filter(file => file.endsWith('.csv'))
-    .map(file => file.replace('bad_impressions_', '').replace('.csv', ''));
+  try {
+    // Read files from both directories
+    const badImpressionsFiles = fs.readdirSync(badImpressionsDir)
+      .filter(file => file.endsWith('.csv'))
+      .map(file => file.replace('bad_impressions_', '').replace('.csv', ''));
 
-  const impressionsCountFiles = fs.readdirSync(impressionsCountDir)
-    .filter(file => file.endsWith('.csv'))
-    .map(file => file.replace('impressions_count_', '').replace('_report.csv', ''));
+    const impressionsCountFiles = fs.readdirSync(impressionsCountDir)
+      .filter(file => file.endsWith('.csv'))
+      .map(file => file.replace('impressions_count_', '').replace('_report.csv', ''));
 
-  // Find common dates
-  const commonDates = badImpressionsFiles.filter(date => impressionsCountFiles.includes(date));
-  console.log('Available dates:', commonDates);
+    // Find common dates
+    const commonDates = badImpressionsFiles.filter(date => impressionsCountFiles.includes(date));
+    console.log('Available dates:', commonDates);
 
-  res.json(commonDates);
+    res.json(commonDates);
+  } catch (error) {
+    console.error('Error reading directories:', error);
+    res.status(500).json({ error: 'Failed to read data directories' });
+  }
 });
 
 // Endpoint to get bad impressions data
 app.get('/api/bad-impressions/:date', (req, res) => {
   try {
-    const date = req.params.date; // Already in DDMMYY format
-    const filePath = path.join(__dirname, 'src', 'data', 'bad-impressions', `bad_impressions_${date}.csv`);
-    
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
+    const date = req.params.date;
+    const possiblePaths = [
+      path.join(__dirname, 'src', 'data', 'bad-impressions'),
+      path.join(__dirname, 'build', 'data', 'bad-impressions')
+    ];
+
+    let filePath = null;
+    for (const basePath of possiblePaths) {
+      const path = path.join(basePath, `bad_impressions_${date}.csv`);
+      if (fs.existsSync(path)) {
+        filePath = path;
+        break;
+      }
+    }
+
+    if (!filePath) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -66,11 +95,22 @@ app.get('/api/bad-impressions/:date', (req, res) => {
 // Endpoint to get impressions count data
 app.get('/api/impressions-count/:date', (req, res) => {
   try {
-    const date = req.params.date; // Already in DDMMYY format
-    const filePath = path.join(__dirname, 'src', 'data', 'impressions-count', `impressions_count_${date}_report.csv`);
-    
-    if (!fs.existsSync(filePath)) {
-      console.error(`File not found: ${filePath}`);
+    const date = req.params.date;
+    const possiblePaths = [
+      path.join(__dirname, 'src', 'data', 'impressions-count'),
+      path.join(__dirname, 'build', 'data', 'impressions-count')
+    ];
+
+    let filePath = null;
+    for (const basePath of possiblePaths) {
+      const path = path.join(basePath, `impressions_count_${date}_report.csv`);
+      if (fs.existsSync(path)) {
+        filePath = path;
+        break;
+      }
+    }
+
+    if (!filePath) {
       return res.status(404).json({ error: 'File not found' });
     }
 
