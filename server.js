@@ -13,35 +13,27 @@ app.use(express.json());
 // Serve static files from the React build directory
 app.use(express.static(path.join(__dirname, 'build')));
 
+// Helper function to get data directory path
+const getDataDir = () => {
+  // In production (Heroku), use the build directory
+  if (process.env.NODE_ENV === 'production') {
+    return path.join(__dirname, 'build', 'data');
+  }
+  // In development, use the src directory
+  return path.join(__dirname, 'src', 'data');
+};
+
 // API Routes
 app.get('/api/available-dates', (req, res) => {
-  // Look for data in both possible locations
-  const possiblePaths = [
-    path.join(__dirname, 'src', 'data'),
-    path.join(__dirname, 'build', 'data')
-  ];
-
-  let badImpressionsDir = null;
-  let impressionsCountDir = null;
-
-  // Find the correct paths
-  for (const basePath of possiblePaths) {
-    const badPath = path.join(basePath, 'bad-impressions');
-    const countPath = path.join(basePath, 'impressions-count');
-    
-    if (fs.existsSync(badPath) && fs.existsSync(countPath)) {
-      badImpressionsDir = badPath;
-      impressionsCountDir = countPath;
-      break;
-    }
-  }
-
-  if (!badImpressionsDir || !impressionsCountDir) {
-    console.error('Data directories not found in any location');
-    return res.status(500).json({ error: 'Data directories not found' });
-  }
-
   try {
+    const dataDir = getDataDir();
+    const badImpressionsDir = path.join(dataDir, 'bad-impressions');
+    const impressionsCountDir = path.join(dataDir, 'impressions-count');
+
+    console.log('Reading from directories:');
+    console.log('Bad impressions:', badImpressionsDir);
+    console.log('Impressions count:', impressionsCountDir);
+
     // Read files from both directories
     const badImpressionsFiles = fs.readdirSync(badImpressionsDir)
       .filter(file => file.endsWith('.csv'))
@@ -57,8 +49,8 @@ app.get('/api/available-dates', (req, res) => {
 
     res.json(commonDates);
   } catch (error) {
-    console.error('Error reading directories:', error);
-    res.status(500).json({ error: 'Failed to read data directories' });
+    console.error('Error getting available dates:', error);
+    res.status(500).json({ error: 'Failed to get available dates' });
   }
 });
 
@@ -66,21 +58,11 @@ app.get('/api/available-dates', (req, res) => {
 app.get('/api/bad-impressions/:date', (req, res) => {
   try {
     const date = req.params.date;
-    const possiblePaths = [
-      path.join(__dirname, 'src', 'data', 'bad-impressions'),
-      path.join(__dirname, 'build', 'data', 'bad-impressions')
-    ];
-
-    let filePath = null;
-    for (const basePath of possiblePaths) {
-      const path = path.join(basePath, `bad_impressions_${date}.csv`);
-      if (fs.existsSync(path)) {
-        filePath = path;
-        break;
-      }
-    }
-
-    if (!filePath) {
+    const filePath = path.join(getDataDir(), 'bad-impressions', `bad_impressions_${date}.csv`);
+    
+    console.log('Reading bad impressions from:', filePath);
+    
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -96,21 +78,11 @@ app.get('/api/bad-impressions/:date', (req, res) => {
 app.get('/api/impressions-count/:date', (req, res) => {
   try {
     const date = req.params.date;
-    const possiblePaths = [
-      path.join(__dirname, 'src', 'data', 'impressions-count'),
-      path.join(__dirname, 'build', 'data', 'impressions-count')
-    ];
-
-    let filePath = null;
-    for (const basePath of possiblePaths) {
-      const path = path.join(basePath, `impressions_count_${date}_report.csv`);
-      if (fs.existsSync(path)) {
-        filePath = path;
-        break;
-      }
-    }
-
-    if (!filePath) {
+    const filePath = path.join(getDataDir(), 'impressions-count', `impressions_count_${date}_report.csv`);
+    
+    console.log('Reading impressions count from:', filePath);
+    
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
@@ -145,4 +117,6 @@ app.listen(port, () => {
   console.log(`You can access the server at:`);
   console.log(`- Local: http://localhost:${port}`);
   console.log(`- Heroku: https://your-app-name.herokuapp.com`);
+  console.log('Environment:', process.env.NODE_ENV || 'development');
+  console.log('Data directory:', getDataDir());
 }); 

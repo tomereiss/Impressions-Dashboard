@@ -13,12 +13,13 @@ import {
   Collapse,
   Box,
   Typography,
-  useTheme
+  useTheme,
+  Alert
 } from '@mui/material';
 import WarningIcon from '@mui/icons-material/Warning';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { format } from 'date-fns';
-import { API_URL } from '../config';
+import { API_BASE_URL } from '../config';
 
 interface DataTableProps {
   date: string;
@@ -109,44 +110,39 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
     });
   }, [data, sortConfig]);
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+    try {
       setLoading(true);
       setError(null);
-      try {
-        // Convert type to match server endpoints
-        const endpointType = type === 'bad_impressions' ? 'bad-impressions' : 'impressions-count';
-        const url = `${API_URL}/api/${endpointType}/${date}`;
-        
-        console.log('Fetching data from:', url);
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Failed to fetch data');
-        }
-        const result = await response.json();
-        console.log('Raw data from server:', result);
-        
-        // Filter data by partner ID if provided
-        const filteredData = partnerId 
-          ? result.filter((row: TableData) => {
-              // Convert both to strings and trim for comparison
-              const rowPartnerId = String(row.partnerId || row.partner_id || row['partner id']).trim();
-              const searchPartnerId = String(partnerId).trim();
-              console.log('Comparing:', { rowPartnerId, searchPartnerId, match: rowPartnerId === searchPartnerId });
-              return rowPartnerId === searchPartnerId;
-            })
-          : result;
-        
-        console.log('Filtered data:', filteredData);
-        setData(filteredData);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
-        setLoading(false);
-      }
-    };
 
+      // Fetch impressions count data
+      console.log('Fetching data from:', `${API_BASE_URL}/api/impressions-count/${date}`);
+      const impressionsResponse = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
+      if (!impressionsResponse.ok) {
+        throw new Error(`HTTP error! status: ${impressionsResponse.status}`);
+      }
+      const impressionsData = await impressionsResponse.json();
+
+      // Fetch bad impressions data
+      console.log('Fetching data from:', `${API_BASE_URL}/api/bad-impressions/${date}`);
+      const badImpressionsResponse = await fetch(`${API_BASE_URL}/api/bad-impressions/${date}`);
+      if (!badImpressionsResponse.ok) {
+        throw new Error(`HTTP error! status: ${badImpressionsResponse.status}`);
+      }
+      const badImpressionsData = await badImpressionsResponse.json();
+
+      // Process and combine the data
+      const processedData = processData(impressionsData, badImpressionsData);
+      setData(processedData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch data. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, [date, type, partnerId]);
 
@@ -161,7 +157,7 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
   if (error) {
     return (
       <Box p={3}>
-        <Typography color="error">Error: {error}</Typography>
+        <Alert severity="error">{error}</Alert>
       </Box>
     );
   }

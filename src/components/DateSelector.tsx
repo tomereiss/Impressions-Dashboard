@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { Box, FormControl, InputLabel, Select, MenuItem, SelectChangeEvent } from '@mui/material';
+import { API_BASE_URL } from '../config';
 
 interface DateSelectorProps {
   onDateChange: (date: string | null) => void;
@@ -19,18 +20,14 @@ const DateSelector: React.FC<DateSelectorProps> = ({ onDateChange }) => {
 
   const fetchAvailableDates = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/available-dates');
+      const response = await fetch(`${API_BASE_URL}/api/available-dates`);
       if (!response.ok) {
-        throw new Error('Failed to fetch available dates');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
       const dates = await response.json();
-      
-      // Only set dates that exist in both directories
-      if (Array.isArray(dates) && dates.length > 0) {
-        setAvailableDates(dates);
-        // Set the most recent date as default
+      setAvailableDates(dates);
+      if (dates.length > 0 && !selectedDate) {
         setSelectedDate(dates[0]);
-        onDateChange(dates[0]);
       }
     } catch (error) {
       console.error('Error fetching available dates:', error);
