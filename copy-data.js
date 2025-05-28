@@ -2,14 +2,12 @@ const fs = require('fs');
 const path = require('path');
 
 // Source and destination directories
-const sourceDir = path.join(__dirname, 'data');
+const sourceDir = path.join(__dirname, 'src', 'data');
 const destDir = path.join(__dirname, 'build', 'data');
 
-// Create source directory if it doesn't exist
-if (!fs.existsSync(sourceDir)) {
-  console.log('Creating source data directory...');
-  fs.mkdirSync(sourceDir, { recursive: true });
-}
+console.log('Starting data file copy process...');
+console.log('Source directory:', sourceDir);
+console.log('Destination directory:', destDir);
 
 // Create destination directory if it doesn't exist
 if (!fs.existsSync(destDir)) {
@@ -17,34 +15,51 @@ if (!fs.existsSync(destDir)) {
   fs.mkdirSync(destDir, { recursive: true });
 }
 
-// Copy all CSV files from source to destination
-try {
-  console.log('Checking for CSV files in:', sourceDir);
-  const files = fs.readdirSync(sourceDir);
-  
-  if (files.length === 0) {
-    console.log('No CSV files found in source directory.');
-    process.exit(0);
-  }
-
+// Function to copy CSV files from a directory
+const copyCSVFiles = (sourcePath, destPath) => {
+  const files = fs.readdirSync(sourcePath);
   let copiedCount = 0;
+
   files.forEach(file => {
     if (file.endsWith('.csv')) {
-      const sourcePath = path.join(sourceDir, file);
-      const destPath = path.join(destDir, file);
-      fs.copyFileSync(sourcePath, destPath);
+      const sourceFilePath = path.join(sourcePath, file);
+      const destFilePath = path.join(destPath, file);
+      fs.copyFileSync(sourceFilePath, destFilePath);
       console.log(`Copied ${file} to build directory`);
       copiedCount++;
     }
   });
 
-  if (copiedCount === 0) {
-    console.log('No CSV files were copied. Please ensure you have .csv files in the data directory.');
+  return copiedCount;
+};
+
+// Copy all CSV files from source to destination
+try {
+  console.log('Checking for CSV files in:', sourceDir);
+  const subdirs = fs.readdirSync(sourceDir);
+  
+  if (subdirs.length === 0) {
+    console.log('No subdirectories found in source directory.');
+    process.exit(1);
+  }
+
+  let totalCopied = 0;
+  subdirs.forEach(subdir => {
+    const subdirPath = path.join(sourceDir, subdir);
+    if (fs.statSync(subdirPath).isDirectory()) {
+      console.log(`Processing directory: ${subdir}`);
+      const copied = copyCSVFiles(subdirPath, destDir);
+      totalCopied += copied;
+    }
+  });
+
+  if (totalCopied === 0) {
+    console.log('No CSV files were copied. Please ensure you have .csv files in the src/data subdirectories.');
+    process.exit(1);
   } else {
-    console.log(`Successfully copied ${copiedCount} CSV files to build directory!`);
+    console.log(`Successfully copied ${totalCopied} CSV files to build directory!`);
   }
 } catch (error) {
   console.error('Error copying data files:', error);
-  // Don't exit with error code to allow build to continue
-  console.log('Continuing with build process...');
+  process.exit(1);
 } 
