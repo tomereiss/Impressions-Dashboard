@@ -43,26 +43,28 @@ const usePartnerStats = (partnerId: string) => {
         const sevenDaysAgo = new Date(today);
         sevenDaysAgo.setDate(today.getDate() - 8);
 
-        console.log('Date range for filtering:', {
-          today: today.toISOString(),
-          sevenDaysAgo: sevenDaysAgo.toISOString()
-        });
+        // Check if we have cached data for this partner
+        const cacheKey = `partner_${partnerId}_stats`;
+        const cachedData = localStorage.getItem(cacheKey);
+        const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+        
+        // Use cached data if it's less than 1 hour old
+        if (cachedData && cacheTimestamp) {
+          const cacheAge = Date.now() - parseInt(cacheTimestamp);
+          if (cacheAge < 3600000) { // 1 hour in milliseconds
+            console.log('Using cached data for partner', partnerId);
+            setData(JSON.parse(cachedData));
+            setLoading(false);
+            return;
+          }
+        }
 
         // Filter dates to only include the last 7 days
         const filteredDates = dates.filter((date: string) => {
           const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
           const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
-          const isInRange = dataDate >= sevenDaysAgo && dataDate < today;
-          console.log('Checking date:', {
-            date,
-            formatted: `${day}/${month}/${year}`,
-            dataDate: dataDate.toISOString(),
-            isInRange
-          });
-          return isInRange;
+          return dataDate >= sevenDaysAgo && dataDate < today;
         });
-
-        console.log('Filtered dates for graph:', filteredDates);
 
         for (const date of filteredDates) {
           const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
@@ -94,6 +96,10 @@ const usePartnerStats = (partnerId: string) => {
           const dateB = new Date(2000 + parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
           return dateA.getTime() - dateB.getTime();
         });
+
+        // Cache the processed data
+        localStorage.setItem(cacheKey, JSON.stringify(dataPoints));
+        localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
 
         console.log('Final data points for partner', partnerId, ':', dataPoints);
         setData(dataPoints);

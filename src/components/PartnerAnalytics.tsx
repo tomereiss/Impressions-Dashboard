@@ -168,6 +168,27 @@ const PartnerAnalytics: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      // Check if we have cached data for this partner
+      const cacheKey = `partner_${searchPartnerId}_analytics`;
+      const cachedData = localStorage.getItem(cacheKey);
+      const cacheTimestamp = localStorage.getItem(`${cacheKey}_timestamp`);
+      
+      // Use cached data if it's less than 1 hour old
+      if (cachedData && cacheTimestamp) {
+        const cacheAge = Date.now() - parseInt(cacheTimestamp);
+        if (cacheAge < 3600000) { // 1 hour in milliseconds
+          console.log('Using cached analytics data for partner', searchPartnerId);
+          const parsedData = JSON.parse(cachedData);
+          setWeeklyData(parsedData.weeklyData);
+          setViolationData(parsedData.violationData);
+          setStats(parsedData.stats);
+          setAvailableDates(parsedData.availableDates);
+          setViolationsDataArray(parsedData.violationsDataArray);
+          setLoading(false);
+          return;
+        }
+      }
+
       const weeklyData: WeeklyDataPoint[] = [];
       const violationDataArray: ViolationData[] = [];
       const stats: StatsDataPoint[] = [];
@@ -313,6 +334,17 @@ const PartnerAnalytics: React.FC = () => {
       console.log('Total impressions:', filteredStats.reduce((sum, stat) => sum + stat.totalImpressions, 0).toLocaleString());
       console.log('Average bad percentage:', (filteredStats.reduce((sum, stat) => sum + stat.percentage, 0) / filteredStats.length).toFixed(2) + '%');
       console.log('------------------------');
+
+      // Cache the processed data
+      const dataToCache = {
+        weeklyData: filteredWeeklyData,
+        violationData: filteredViolationData,
+        stats: filteredStats,
+        availableDates: filteredAvailableDates,
+        violationsDataArray: filteredViolationData
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(dataToCache));
+      localStorage.setItem(`${cacheKey}_timestamp`, Date.now().toString());
 
       setWeeklyData(filteredWeeklyData);
       setViolationData(filteredViolationData);
