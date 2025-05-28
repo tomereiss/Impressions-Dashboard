@@ -68,6 +68,7 @@ const usePartnerStats = (partnerId: string) => {
           return dateA.getTime() - dateB.getTime();
         });
 
+        console.log('Final data points for partner', partnerId, ':', dataPoints);
         setData(dataPoints);
       } catch (err) {
         console.error('Error fetching partner stats:', err);

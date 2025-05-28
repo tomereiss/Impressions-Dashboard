@@ -33,7 +33,6 @@ const ViolationsPieChart: React.FC<ViolationsPieChartProps> = React.memo(({ part
   const pieData = useMemo(() => {
     // Aggregate violations across all dates
     const aggregatedViolations = violationData.reduce((acc, data) => {
-      console.log('Processing data point:', data);
       data.violations.forEach(violation => {
         const existingViolation = acc.find(v => v.type === violation.type);
         if (existingViolation) {
@@ -45,20 +44,18 @@ const ViolationsPieChart: React.FC<ViolationsPieChartProps> = React.memo(({ part
       return acc;
     }, [] as { type: string; count: number }[]);
 
-    console.log('Aggregated violations:', aggregatedViolations);
-
     // Sort violations by count in descending order
     const sortedViolations = [...aggregatedViolations].sort((a, b) => b.count - a.count);
-    console.log('Sorted violations:', sortedViolations);
 
     // Format the data for the pie chart
-    return sortedViolations.map(violation => ({
+    const result = sortedViolations.map(violation => ({
       name: violation.type,
       value: violation.count
     }));
-  }, [violationData]);
 
-  console.log('Final pie chart data:', pieData);
+    console.log('Final pie chart data for partner', partnerId, ':', result);
+    return result;
+  }, [violationData, partnerId]);
 
   if (pieData.length === 0) {
     return (
