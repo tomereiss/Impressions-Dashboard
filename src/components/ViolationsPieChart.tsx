@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   PieChart,
   Pie,
@@ -25,35 +25,39 @@ interface ViolationsPieChartProps {
 
 const COLORS = ['#574B60', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#3498DB', '#2E86C1'];
 
-const ViolationsPieChart: React.FC<ViolationsPieChartProps> = ({ partnerId, violationData }) => {
+const ViolationsPieChart: React.FC<ViolationsPieChartProps> = React.memo(({ partnerId, violationData }) => {
   console.log('\n=== ViolationsPieChart Component ===');
   console.log('Received violation data:', violationData);
 
-  // Aggregate violations across all dates
-  const aggregatedViolations = violationData.reduce((acc, data) => {
-    console.log('Processing data point:', data);
-    data.violations.forEach(violation => {
-      const existingViolation = acc.find(v => v.type === violation.type);
-      if (existingViolation) {
-        existingViolation.count += violation.count;
-      } else {
-        acc.push({ ...violation });
-      }
-    });
-    return acc;
-  }, [] as { type: string; count: number }[]);
+  // Memoize the data processing
+  const pieData = useMemo(() => {
+    // Aggregate violations across all dates
+    const aggregatedViolations = violationData.reduce((acc, data) => {
+      console.log('Processing data point:', data);
+      data.violations.forEach(violation => {
+        const existingViolation = acc.find(v => v.type === violation.type);
+        if (existingViolation) {
+          existingViolation.count += violation.count;
+        } else {
+          acc.push({ ...violation });
+        }
+      });
+      return acc;
+    }, [] as { type: string; count: number }[]);
 
-  console.log('Aggregated violations:', aggregatedViolations);
+    console.log('Aggregated violations:', aggregatedViolations);
 
-  // Sort violations by count in descending order
-  const sortedViolations = [...aggregatedViolations].sort((a, b) => b.count - a.count);
-  console.log('Sorted violations:', sortedViolations);
+    // Sort violations by count in descending order
+    const sortedViolations = [...aggregatedViolations].sort((a, b) => b.count - a.count);
+    console.log('Sorted violations:', sortedViolations);
 
-  // Format the data for the pie chart
-  const pieData = sortedViolations.map(violation => ({
-    name: violation.type,
-    value: violation.count
-  }));
+    // Format the data for the pie chart
+    return sortedViolations.map(violation => ({
+      name: violation.type,
+      value: violation.count
+    }));
+  }, [violationData]);
+
   console.log('Final pie chart data:', pieData);
 
   if (pieData.length === 0) {
@@ -119,6 +123,8 @@ const ViolationsPieChart: React.FC<ViolationsPieChartProps> = ({ partnerId, viol
       </Box>
     </Box>
   );
-};
+});
+
+ViolationsPieChart.displayName = 'ViolationsPieChart';
 
 export default ViolationsPieChart;
