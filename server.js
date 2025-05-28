@@ -38,16 +38,25 @@ app.get('/api/available-dates', (req, res) => {
       fs.mkdirSync(dataDir, { recursive: true });
     }
     
-    const files = fs.readdirSync(dataDir);
-    console.log('Found files:', files);
+    // Get all CSV files from both subdirectories
+    const dates = new Set();
+    ['bad-impressions', 'impressions-count'].forEach(subdir => {
+      const subdirPath = path.join(dataDir, subdir);
+      if (fs.existsSync(subdirPath)) {
+        const files = fs.readdirSync(subdirPath);
+        files.forEach(file => {
+          if (file.endsWith('.csv')) {
+            // Extract date from filename (e.g., bad_impressions_180525.csv -> 180525)
+            const date = file.split('_').pop().replace('.csv', '');
+            dates.add(date);
+          }
+        });
+      }
+    });
     
-    const dates = files
-      .filter(file => file.endsWith('.csv'))
-      .map(file => file.replace('.csv', ''))
-      .sort();
-    
-    console.log('Available dates:', dates);
-    res.json(dates);
+    const sortedDates = Array.from(dates).sort();
+    console.log('Available dates:', sortedDates);
+    res.json(sortedDates);
   } catch (error) {
     console.error('Error getting available dates:', error);
     res.status(500).json({ error: 'Failed to get available dates' });
@@ -58,15 +67,17 @@ app.get('/api/available-dates', (req, res) => {
 app.get('/api/impressions-count/:date', (req, res) => {
   try {
     const { date } = req.params;
-    const dataDir = path.join(__dirname, 'build', 'data');
-    const filePath = path.join(dataDir, `${date}.csv`);
+    const dataDir = path.join(__dirname, 'build', 'data', 'impressions-count');
+    const files = fs.readdirSync(dataDir);
+    const matchingFile = files.find(file => file.includes(date));
     
-    console.log('Reading impressions count from:', filePath);
-    
-    if (!fs.existsSync(filePath)) {
-      console.log('File not found:', filePath);
+    if (!matchingFile) {
+      console.log('File not found for date:', date);
       return res.status(404).json({ error: 'File not found' });
     }
+    
+    const filePath = path.join(dataDir, matchingFile);
+    console.log('Reading impressions count from:', filePath);
     
     const data = readCSVFile(filePath);
     console.log(`Found ${data.length} records for date ${date}`);
@@ -81,15 +92,17 @@ app.get('/api/impressions-count/:date', (req, res) => {
 app.get('/api/bad-impressions/:date', (req, res) => {
   try {
     const { date } = req.params;
-    const dataDir = path.join(__dirname, 'build', 'data');
-    const filePath = path.join(dataDir, `${date}.csv`);
+    const dataDir = path.join(__dirname, 'build', 'data', 'bad-impressions');
+    const files = fs.readdirSync(dataDir);
+    const matchingFile = files.find(file => file.includes(date));
     
-    console.log('Reading bad impressions from:', filePath);
-    
-    if (!fs.existsSync(filePath)) {
-      console.log('File not found:', filePath);
+    if (!matchingFile) {
+      console.log('File not found for date:', date);
       return res.status(404).json({ error: 'File not found' });
     }
+    
+    const filePath = path.join(dataDir, matchingFile);
+    console.log('Reading bad impressions from:', filePath);
     
     const data = readCSVFile(filePath);
     console.log(`Found ${data.length} records for date ${date}`);

@@ -25,7 +25,7 @@ const copyCSVFiles = (sourcePath, destPath) => {
       const sourceFilePath = path.join(sourcePath, file);
       const destFilePath = path.join(destPath, file);
       fs.copyFileSync(sourceFilePath, destFilePath);
-      console.log(`Copied ${file} to build directory`);
+      console.log(`Copied ${file} to ${destPath}`);
       copiedCount++;
     }
   });
@@ -48,7 +48,12 @@ try {
     const subdirPath = path.join(sourceDir, subdir);
     if (fs.statSync(subdirPath).isDirectory()) {
       console.log(`Processing directory: ${subdir}`);
-      const copied = copyCSVFiles(subdirPath, destDir);
+      // Create the corresponding subdirectory in the destination
+      const destSubdirPath = path.join(destDir, subdir);
+      if (!fs.existsSync(destSubdirPath)) {
+        fs.mkdirSync(destSubdirPath, { recursive: true });
+      }
+      const copied = copyCSVFiles(subdirPath, destSubdirPath);
       totalCopied += copied;
     }
   });
