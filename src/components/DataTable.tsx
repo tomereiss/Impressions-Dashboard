@@ -114,15 +114,24 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
   // Process and combine the data
   const processData = (impressionsData: any[], badImpressionsData: any[]) => {
     if (type === 'impressions_stats') {
-      return impressionsData.map(row => ({
+      const filteredData = partnerId 
+        ? impressionsData.filter(row => 
+            String(row.partner_id || row.partnerId || row['partner id']).trim() === String(partnerId).trim()
+          )
+        : impressionsData;
+      return filteredData.map(row => ({
         partner_id: row.partner_id || row.partnerId || row['partner id'],
-        impressions_count: row.impressions_count,
-        bad_impressions_count: row.bad_impressions_count,
+        good_impressions_number: row.impressions_count,
+        bad_impressions_number: row.violation_count,
         bad_from_total_in_percentage: row.bad_from_total_in_percentage,
-        violation_count: row.violation_count
       }));
     } else {
-      return badImpressionsData.map(row => ({
+      const filteredData = partnerId 
+        ? badImpressionsData.filter(row => 
+            String(row.partnerId).trim() === String(partnerId).trim()
+          )
+        : badImpressionsData;
+      return filteredData.map(row => ({
         partner_id: row.partnerId,
         violation: row.violation,
         violation_count: row.violation_count

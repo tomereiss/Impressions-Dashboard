@@ -10,6 +10,14 @@ const PORT = process.env.PORT || 3001;
 // Enable CORS for all routes
 app.use(cors());
 
+// Determine data directory based on environment
+const getDataDir = () => {
+  const isDev = process.env.NODE_ENV !== 'production';
+  return isDev 
+    ? path.join(__dirname, 'src', 'data')
+    : path.join(__dirname, 'build', 'data');
+};
+
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, 'build')));
 
@@ -30,33 +38,32 @@ const readCSVFile = (filePath) => {
 // Get available dates
 app.get('/api/available-dates', (req, res) => {
   try {
-    const dataDir = path.join(__dirname, 'build', 'data');
-    console.log('Reading from data directory:', dataDir);
-    
-    if (!fs.existsSync(dataDir)) {
-      console.log('Data directory does not exist, creating it...');
-      fs.mkdirSync(dataDir, { recursive: true });
+    const dataDir = getDataDir();
+    const impressionsDir = path.join(dataDir, 'impressions-count');
+    const badDir = path.join(dataDir, 'bad-impressions');
+    const impressionsDates = new Set();
+    const badDates = new Set();
+    const dateRegex = /_(\d{6})(?:_report)?\.csv$/;
+
+    if (fs.existsSync(impressionsDir)) {
+      fs.readdirSync(impressionsDir).forEach(file => {
+        if (file.endsWith('.csv')) {
+          const match = file.match(dateRegex);
+          if (match) impressionsDates.add(match[1]);
+        }
+      });
     }
-    
-    // Get all CSV files from both subdirectories
-    const dates = new Set();
-    ['bad-impressions', 'impressions-count'].forEach(subdir => {
-      const subdirPath = path.join(dataDir, subdir);
-      if (fs.existsSync(subdirPath)) {
-        const files = fs.readdirSync(subdirPath);
-        files.forEach(file => {
-          if (file.endsWith('.csv')) {
-            // Extract date from filename (e.g., impressions_count_180525_report.csv -> 180525)
-            const date = file.split('_').pop().replace('_report.csv', '').replace('.csv', '');
-            dates.add(date);
-          }
-        });
-      }
-    });
-    
-    const sortedDates = Array.from(dates).sort();
-    console.log('Available dates:', sortedDates);
-    res.json(sortedDates);
+    if (fs.existsSync(badDir)) {
+      fs.readdirSync(badDir).forEach(file => {
+        if (file.endsWith('.csv')) {
+          const match = file.match(dateRegex);
+          if (match) badDates.add(match[1]);
+        }
+      });
+    }
+    // Only include dates that have both files
+    const availableDates = Array.from(impressionsDates).filter(date => badDates.has(date)).sort().reverse();
+    res.json(availableDates);
   } catch (error) {
     console.error('Error getting available dates:', error);
     res.status(500).json({ error: 'Failed to get available dates' });
@@ -67,21 +74,16 @@ app.get('/api/available-dates', (req, res) => {
 app.get('/api/impressions-count/:date', (req, res) => {
   try {
     const { date } = req.params;
-    const dataDir = path.join(__dirname, 'build', 'data', 'impressions-count');
+    const dataDir = path.join(getDataDir(), 'impressions-count');
     const files = fs.readdirSync(dataDir);
-    // Look for file with _report suffix
-    const matchingFile = files.find(file => file.includes(`_${date}_report.csv`));
-    
+    // Look for files with either format: _date_report.csv or _date.csv
+    const matchingFile = files.find(file => file.match(new RegExp(`_${date}(_report)?\\.csv$`)));
     if (!matchingFile) {
-      console.log('File not found for date:', date);
       return res.status(404).json({ error: 'File not found' });
     }
-    
     const filePath = path.join(dataDir, matchingFile);
-    console.log('Reading impressions count from:', filePath);
-    
     const data = readCSVFile(filePath);
-    console.log(`Found ${data.length} records for date ${date}`);
+    // Return the data exactly as it is in the CSV
     res.json(data);
   } catch (error) {
     console.error(`Error getting impressions count for date ${req.params.date}:`, error);
@@ -93,10 +95,13 @@ app.get('/api/impressions-count/:date', (req, res) => {
 app.get('/api/bad-impressions/:date', (req, res) => {
   try {
     const { date } = req.params;
-    const dataDir = path.join(__dirname, 'build', 'data', 'bad-impressions');
+    const dataDir = path.join(getDataDir(), 'bad-impressions');
     const files = fs.readdirSync(dataDir);
-    // Look for file with correct format
-    const matchingFile = files.find(file => file.includes(`_${date}.csv`));
+    
+    // Look for files with either format: _date_report.csv or _date.csv
+    const matchingFile = files.find(file => 
+      file.includes(`_${date}_report.csv`) || file.includes(`_${date}.csv`)
+    );
     
     if (!matchingFile) {
       console.log('File not found for date:', date);
@@ -124,5 +129,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Data directory: ${path.join(__dirname, 'build', 'data')}`);
+  console.log(`Data directory: ${getDataDir()}`);
 }); 

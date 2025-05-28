@@ -24,6 +24,8 @@ const copyCSVFiles = (sourcePath, destPath) => {
     if (file.endsWith('.csv')) {
       const sourceFilePath = path.join(sourcePath, file);
       const destFilePath = path.join(destPath, file);
+      
+      // Create a copy of the file with the same name
       fs.copyFileSync(sourceFilePath, destFilePath);
       console.log(`Copied ${file} to ${destPath}`);
       copiedCount++;

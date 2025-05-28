@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { API_BASE_URL } from '../config';
 
 interface BadFromTotalGraphProps {
   partnerId: string;
@@ -22,7 +23,7 @@ const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
       try {
         setLoading(true);
         // First get available dates
-        const datesResponse = await fetch('http://localhost:3001/api/available-dates');
+        const datesResponse = await fetch(`${API_BASE_URL}/api/available-dates`);
         if (!datesResponse.ok) {
           throw new Error('Failed to fetch available dates');
         }
@@ -31,7 +32,7 @@ const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
         // Then fetch data for each date
         const dataPoints: DataPoint[] = [];
         for (const date of dates) {
-          const response = await fetch(`http://localhost:3001/api/impressions-count/${date}`);
+          const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
           if (response.ok) {
             const impressionsData = await response.json();
             const partnerData = impressionsData.find((row: any) => 
