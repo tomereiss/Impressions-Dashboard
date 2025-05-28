@@ -46,8 +46,8 @@ app.get('/api/available-dates', (req, res) => {
         const files = fs.readdirSync(subdirPath);
         files.forEach(file => {
           if (file.endsWith('.csv')) {
-            // Extract date from filename (e.g., bad_impressions_180525.csv -> 180525)
-            const date = file.split('_').pop().replace('.csv', '');
+            // Extract date from filename (e.g., impressions_count_180525_report.csv -> 180525)
+            const date = file.split('_').pop().replace('_report.csv', '').replace('.csv', '');
             dates.add(date);
           }
         });
@@ -69,7 +69,8 @@ app.get('/api/impressions-count/:date', (req, res) => {
     const { date } = req.params;
     const dataDir = path.join(__dirname, 'build', 'data', 'impressions-count');
     const files = fs.readdirSync(dataDir);
-    const matchingFile = files.find(file => file.includes(date));
+    // Look for file with _report suffix
+    const matchingFile = files.find(file => file.includes(`_${date}_report.csv`));
     
     if (!matchingFile) {
       console.log('File not found for date:', date);
@@ -94,7 +95,8 @@ app.get('/api/bad-impressions/:date', (req, res) => {
     const { date } = req.params;
     const dataDir = path.join(__dirname, 'build', 'data', 'bad-impressions');
     const files = fs.readdirSync(dataDir);
-    const matchingFile = files.find(file => file.includes(date));
+    // Look for file with correct format
+    const matchingFile = files.find(file => file.includes(`_${date}.csv`));
     
     if (!matchingFile) {
       console.log('File not found for date:', date);
