@@ -26,9 +26,6 @@ interface ViolationsPieChartProps {
 const COLORS = ['#574B60', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#3498DB', '#2E86C1'];
 
 const ViolationsPieChart: React.FC<ViolationsPieChartProps> = React.memo(({ partnerId, violationData }) => {
-  console.log('\n=== ViolationsPieChart Component ===');
-  console.log('Received violation data:', violationData);
-
   // Memoize the data processing
   const pieData = useMemo(() => {
     // Aggregate violations across all dates

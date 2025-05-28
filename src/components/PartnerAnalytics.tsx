@@ -258,10 +258,6 @@ const PartnerAnalytics: React.FC = () => {
         }
       }
 
-      console.log('\n=== Summary ===');
-      console.log('Total dates with data:', stats.length);
-      console.log('------------------------');
-
       // Sort data by date
       weeklyData.sort((a, b) => {
         const [dayA, monthA, yearA] = a.date.split('/');
@@ -278,6 +274,12 @@ const PartnerAnalytics: React.FC = () => {
         const dateB = new Date(2000 + parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
         return dateA.getTime() - dateB.getTime();
       });
+
+      console.log(`\n=== Partner ${searchPartnerId} Data Summary ===`);
+      console.log('Total dates with data:', stats.length);
+      console.log('Total impressions:', stats.reduce((sum, stat) => sum + stat.totalImpressions, 0).toLocaleString());
+      console.log('Average bad percentage:', (stats.reduce((sum, stat) => sum + stat.percentage, 0) / stats.length).toFixed(2) + '%');
+      console.log('------------------------');
 
       setWeeklyData(weeklyData);
       setViolationData(violationDataArray);
