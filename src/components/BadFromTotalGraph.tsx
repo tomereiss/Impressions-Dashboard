@@ -41,14 +41,28 @@ const usePartnerStats = (partnerId: string) => {
         // Get only the last 7 days of data
         const today = new Date();
         const sevenDaysAgo = new Date(today);
-        sevenDaysAgo.setDate(today.getDate() - 7);
+        sevenDaysAgo.setDate(today.getDate() - 8);
+
+        console.log('Date range for filtering:', {
+          today: today.toISOString(),
+          sevenDaysAgo: sevenDaysAgo.toISOString()
+        });
 
         // Filter dates to only include the last 7 days
         const filteredDates = dates.filter((date: string) => {
           const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
           const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
-          return dataDate >= sevenDaysAgo && dataDate < today;
+          const isInRange = dataDate >= sevenDaysAgo && dataDate < today;
+          console.log('Checking date:', {
+            date,
+            formatted: `${day}/${month}/${year}`,
+            dataDate: dataDate.toISOString(),
+            isInRange
+          });
+          return isInRange;
         });
+
+        console.log('Filtered dates for graph:', filteredDates);
 
         for (const date of filteredDates) {
           const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
