@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import { API_BASE_URL } from '../config';
 
 interface BadFromTotalGraphProps {
@@ -11,14 +12,19 @@ interface DataPoint {
   percentage: number;
 }
 
-const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
+// Custom hook for data fetching
+const usePartnerStats = (partnerId: string) => {
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!partnerId) return;
+      if (!partnerId) {
+        setData([]);
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -49,11 +55,6 @@ const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
                 date: formattedDate,
                 percentage: percentage
               });
-
-              // Debug log for each data point
-              console.log(`Date: ${formattedDate}`);
-              console.log(`Bad from Total Percentage: ${percentage}%`);
-              console.log('------------------------');
             }
           }
         }
@@ -67,7 +68,6 @@ const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
           return dateA.getTime() - dateB.getTime();
         });
 
-        console.log('Final sorted data points:', dataPoints);
         setData(dataPoints);
       } catch (err) {
         console.error('Error fetching partner stats:', err);
@@ -80,53 +80,78 @@ const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = ({ partnerId }) => {
     fetchData();
   }, [partnerId]);
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>{error}</div>;
-  }
-
-  if (data.length === 0) {
-    return <div>No data available</div>;
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height={400}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
-        <XAxis 
-          dataKey="date" 
-          stroke="#3F334D"
-          tick={{ fill: '#3F334D' }}
-        />
-        <YAxis 
-          domain={[0, 100]} 
-          tickFormatter={v => `${v}%`} 
-          stroke="#3F334D"
-          tick={{ fill: '#3F334D' }}
-        />
-        <Tooltip 
-          formatter={(value: number) => [`${value}%`, 'Bad Impressions']}
-          contentStyle={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid #E0E0E0',
-            borderRadius: '4px',
-            color: '#3F334D'
-          }}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="percentage" 
-          stroke="#574B60" 
-          strokeWidth={2}
-          dot={{ fill: '#574B60', strokeWidth: 2 }}
-          activeDot={{ r: 6, fill: '#3F334D' }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  );
+  return { data, loading, error };
 };
+
+const BadFromTotalGraph: React.FC<BadFromTotalGraphProps> = React.memo(({ partnerId }) => {
+  const { data, loading, error } = usePartnerStats(partnerId);
+
+  // Memoize the chart component to prevent unnecessary re-renders
+  const chartComponent = useMemo(() => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      );
+    }
+
+    if (data.length === 0) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+          <Typography color="text.secondary">No data available</Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <ResponsiveContainer width="100%" height={400}>
+        <LineChart data={data}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#E0E0E0" />
+          <XAxis 
+            dataKey="date" 
+            stroke="#3F334D"
+            tick={{ fill: '#3F334D' }}
+          />
+          <YAxis 
+            domain={[0, 100]} 
+            tickFormatter={v => `${v}%`} 
+            stroke="#3F334D"
+            tick={{ fill: '#3F334D' }}
+          />
+          <Tooltip 
+            formatter={(value: number) => [`${value}%`, 'Bad Impressions']}
+            contentStyle={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid #E0E0E0',
+              borderRadius: '4px',
+              color: '#3F334D'
+            }}
+          />
+          <Line 
+            type="monotone" 
+            dataKey="percentage" 
+            stroke="#574B60" 
+            strokeWidth={2}
+            dot={{ fill: '#574B60', strokeWidth: 2 }}
+            activeDot={{ r: 6, fill: '#3F334D' }}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    );
+  }, [data, loading, error]);
+
+  return chartComponent;
+});
+
+BadFromTotalGraph.displayName = 'BadFromTotalGraph';
 
 export default BadFromTotalGraph; 
