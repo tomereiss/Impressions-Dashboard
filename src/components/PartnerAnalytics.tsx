@@ -275,15 +275,47 @@ const PartnerAnalytics: React.FC = () => {
         return dateA.getTime() - dateB.getTime();
       });
 
-      console.log(`\n=== Partner ${searchPartnerId} Data Summary ===`);
-      console.log('Total dates with data:', stats.length);
-      console.log('Total impressions:', stats.reduce((sum, stat) => sum + stat.totalImpressions, 0).toLocaleString());
-      console.log('Average bad percentage:', (stats.reduce((sum, stat) => sum + stat.percentage, 0) / stats.length).toFixed(2) + '%');
+      // Get only the last 7 days of data
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 8);
+
+      const filteredWeeklyData = weeklyData.filter(data => {
+        const [day, month, year] = data.date.split('/');
+        const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+        return dataDate >= sevenDaysAgo && dataDate < today;
+      });
+
+      const filteredViolationData = violationDataArray.filter(data => {
+        const [day, month, year] = data.date.split('/');
+        const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+        return dataDate >= sevenDaysAgo && dataDate < today;
+      });
+
+      const filteredStats = stats.filter(stat => {
+        const [day, month, year] = stat.date.split('/');
+        const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+        return dataDate >= sevenDaysAgo && dataDate < today;
+      });
+
+      // Filter available dates to show only last 7 days
+      const filteredAvailableDates = availableDates.filter(date => {
+        const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
+        const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+        return dataDate >= sevenDaysAgo && dataDate < today;
+      });
+
+      console.log(`\n=== Weekly Partner ${searchPartnerId} Summary Report ===`);
+      console.log('Date range:', filteredWeeklyData[0]?.date, 'to', filteredWeeklyData[filteredWeeklyData.length - 1]?.date);
+      console.log('Total dates with data:', filteredStats.length);
+      console.log('Total impressions:', filteredStats.reduce((sum, stat) => sum + stat.totalImpressions, 0).toLocaleString());
+      console.log('Average bad percentage:', (filteredStats.reduce((sum, stat) => sum + stat.percentage, 0) / filteredStats.length).toFixed(2) + '%');
       console.log('------------------------');
 
-      setWeeklyData(weeklyData);
-      setViolationData(violationDataArray);
-      setStats(stats);
+      setWeeklyData(filteredWeeklyData);
+      setViolationData(filteredViolationData);
+      setStats(filteredStats);
+      setAvailableDates(filteredAvailableDates);
     } catch (error) {
       console.error('Error fetching partner data:', error);
       setError('Failed to fetch partner data');
@@ -331,8 +363,20 @@ const PartnerAnalytics: React.FC = () => {
     try {
       const partnerStats = new Map<string, { totalImpressions: number[], badPercentages: number[] }>();
       
-      // Fetch data for all available dates
-      for (const date of availableDates) {
+      // Get only the last 7 days of data
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 7);
+
+      // Filter available dates to only include the last 7 days
+      const filteredDates = availableDates.filter(date => {
+        const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
+        const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+        return dataDate >= sevenDaysAgo && dataDate < today;
+      });
+      
+      // Fetch data for filtered dates only
+      for (const date of filteredDates) {
         const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
         if (!response.ok) {
           throw new Error('Failed to fetch impressions data');
@@ -363,16 +407,20 @@ const PartnerAnalytics: React.FC = () => {
           
           return {
             partnerId,
-            impressionsCount: Math.round(avgImpressions),
-            badPercentage: parseFloat(avgBadPercentage.toFixed(2))
+            impressionsCount: avgImpressions,
+            badPercentage: avgBadPercentage
           };
         })
-        .filter(alert => alert.impressionsCount >= impressionsThreshold && alert.badPercentage > percentageThreshold)
+        .filter(alert => 
+          alert.impressionsCount >= impressionsThreshold && 
+          alert.badPercentage >= percentageThreshold
+        )
         .sort((a, b) => b.badPercentage - a.badPercentage);
 
       setAlerts(alerts);
     } catch (error) {
       console.error('Error fetching alerts:', error);
+      setError('Failed to fetch alerts');
     }
   };
 
@@ -406,7 +454,7 @@ const PartnerAnalytics: React.FC = () => {
         <Grid item xs={12}>
           <Paper elevation={3} sx={{ p: 3, bgcolor: '#3F334D', color: '#FFFFFF' }}>
             <Typography variant="h4" gutterBottom>
-              Partner Analytics
+              Weekly Impressions Analysis
             </Typography>
             <Typography variant="subtitle1">
               View detailed analytics for specific partners
@@ -426,18 +474,18 @@ const PartnerAnalytics: React.FC = () => {
             }}
           >
             <Typography variant="h6" sx={{ mb: 2, color: '#E65100', fontWeight: 'bold' }}>
-              High Risk Partners Alert
+              Weekly High Risk Partners Alerts
             </Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Minimum Average Daily Impressions"
+                  label="Minimum Daily Impressions"
                   type="number"
                   value={impressionsThreshold}
                   onChange={(e) => setImpressionsThreshold(Number(e.target.value))}
                   InputProps={{
-                    inputProps: { min: 0 }
+                    inputProps: { min: 0, step: 1000 }
                   }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -493,7 +541,7 @@ const PartnerAnalytics: React.FC = () => {
               </Grid>
             </Grid>
             <Typography variant="body2" sx={{ mb: 2, color: '#BF360C' }}>
-              The following partners have an average of more than {impressionsThreshold.toLocaleString()} impressions per day and average bad impression percentage exceeding {percentageThreshold}%:
+              The following partners have an average of more than {impressionsThreshold.toLocaleString()} impressions per day and average bad impression percentage exceeding {percentageThreshold}% in the last week:
             </Typography>
             <Grid container spacing={2}>
               {alerts.map((alert, index) => (
@@ -510,16 +558,8 @@ const PartnerAnalytics: React.FC = () => {
                       }
                     }}
                     onClick={() => {
-                      // Clear all previous data
-                      setWeeklyData([]);
-                      setViolationData([]);
-                      setStats([]);
-                      setViolationsDataArray([]);
-                      setExpandedCard(null);
-                      // Set both states at once
                       setPartnerId(alert.partnerId);
                       setSearchPartnerId(alert.partnerId);
-                      // Scroll to summary section after a short delay
                       setTimeout(scrollToSummary, 100);
                     }}
                   >
@@ -591,9 +631,9 @@ const PartnerAnalytics: React.FC = () => {
         <Grid item xs={12} ref={summarySectionRef}>
           <Card elevation={3}>
             <CardHeader
-              title="Partner Summary Report"
+              title="Weekly Partner Summary Report"
               sx={{
-                bgcolor: '#574B60',
+                bgcolor: '#7D8491',
                 color: '#FFFFFF',
                 '& .MuiCardHeader-title': {
                   fontSize: '1.2rem',
@@ -765,7 +805,7 @@ const PartnerAnalytics: React.FC = () => {
           <Grid item xs={12}>
             <Card>
               <CardHeader 
-                title="Partner Data by Date" 
+                title="Weekly Partner Data by Date" 
                 sx={{ 
                   bgcolor: '#7D8491', 
                   color: '#FFFFFF',

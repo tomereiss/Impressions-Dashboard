@@ -37,7 +37,20 @@ const usePartnerStats = (partnerId: string) => {
 
         // Then fetch data for each date
         const dataPoints: DataPoint[] = [];
-        for (const date of dates) {
+        
+        // Get only the last 7 days of data
+        const today = new Date();
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+
+        // Filter dates to only include the last 7 days
+        const filteredDates = dates.filter((date: string) => {
+          const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
+          const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
+          return dataDate >= sevenDaysAgo && dataDate < today;
+        });
+
+        for (const date of filteredDates) {
           const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
           if (response.ok) {
             const impressionsData = await response.json();
