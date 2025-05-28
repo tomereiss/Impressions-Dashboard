@@ -177,6 +177,14 @@ const PartnerAnalytics: React.FC = () => {
       console.log('Available dates:', availableDates);
       console.log('------------------------');
 
+      // Get only the last 7 days of data
+      const today = new Date();
+      const sevenDaysAgo = new Date(today);
+      sevenDaysAgo.setDate(today.getDate() - 8);
+
+      // Clear previous violations data before adding new ones
+      setViolationsDataArray([]);
+
       for (const date of availableDates) {
         try {
           // Fetch impressions data
@@ -250,7 +258,7 @@ const PartnerAnalytics: React.FC = () => {
                 violations
               };
               console.log('Final violations data for pie chart:', violationsData);
-              setViolationsDataArray(prev => [...prev, violationsData]);
+              violationDataArray.push(violationsData);
             }
           }
         } catch (error) {
@@ -275,11 +283,6 @@ const PartnerAnalytics: React.FC = () => {
         return dateA.getTime() - dateB.getTime();
       });
 
-      // Get only the last 7 days of data
-      const today = new Date();
-      const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(today.getDate() - 8);
-
       const filteredWeeklyData = weeklyData.filter(data => {
         const [day, month, year] = data.date.split('/');
         const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -298,7 +301,6 @@ const PartnerAnalytics: React.FC = () => {
         return dataDate >= sevenDaysAgo && dataDate < today;
       });
 
-      // Filter available dates to show only last 7 days
       const filteredAvailableDates = availableDates.filter(date => {
         const [day, month, year] = [date.substring(0, 2), date.substring(2, 4), date.substring(4, 6)];
         const dataDate = new Date(2000 + parseInt(year), parseInt(month) - 1, parseInt(day));
@@ -316,6 +318,7 @@ const PartnerAnalytics: React.FC = () => {
       setViolationData(filteredViolationData);
       setStats(filteredStats);
       setAvailableDates(filteredAvailableDates);
+      setViolationsDataArray(filteredViolationData);
     } catch (error) {
       console.error('Error fetching partner data:', error);
       setError('Failed to fetch partner data');
@@ -366,7 +369,7 @@ const PartnerAnalytics: React.FC = () => {
       // Get only the last 7 days of data
       const today = new Date();
       const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(today.getDate() - 7);
+      sevenDaysAgo.setDate(today.getDate() - 8);
 
       // Filter available dates to only include the last 7 days
       const filteredDates = availableDates.filter(date => {
@@ -831,24 +834,30 @@ const PartnerAnalytics: React.FC = () => {
               <Collapse in={isTablesExpanded}>
                 <CardContent sx={{ bgcolor: '#FFFFFF' }}>
                   <Stack spacing={1}>
-                    {availableDates.map((date, index) => (
+                    {[...weeklyData].sort((a, b) => {
+                      const [dayA, monthA, yearA] = a.date.split('/');
+                      const [dayB, monthB, yearB] = b.date.split('/');
+                      const dateA = new Date(2000 + parseInt(yearA), parseInt(monthA) - 1, parseInt(dayA));
+                      const dateB = new Date(2000 + parseInt(yearB), parseInt(monthB) - 1, parseInt(dayB));
+                      return dateB.getTime() - dateA.getTime(); // Reverse order
+                    }).map((data, index) => (
                       <ExpandableCard 
-                        key={date} 
-                        isexpanded={(expandedCard === date).toString()}
+                        key={data.date} 
+                        isexpanded={(expandedCard === data.date).toString()}
                         index={index}
                         sx={{ 
-                          transform: `translateY(${expandedCard === date ? 0 : index * -4}px)`,
-                          zIndex: expandedCard === date ? 2 : 1,
+                          transform: `translateY(${expandedCard === data.date ? 0 : index * -4}px)`,
+                          zIndex: expandedCard === data.date ? 2 : 1,
                           position: 'relative',
-                          boxShadow: expandedCard === date ? 3 : 1,
+                          boxShadow: expandedCard === data.date ? 3 : 1,
                           '&:hover': {
                             zIndex: 3,
                           }
                         }}
                       >
                         <ExpandableCardHeader
-                          title={formatDateForDisplay(date)}
-                          onClick={() => handleCardClick(date)}
+                          title={data.date}
+                          onClick={() => handleCardClick(data.date)}
                           sx={{ 
                             bgcolor: '#F5F5F5',
                             color: '#000000',
@@ -859,19 +868,19 @@ const PartnerAnalytics: React.FC = () => {
                             borderBottom: '1px solid rgba(0, 0, 0, 0.1)'
                           }}
                         />
-                        <Collapse in={expandedCard === date} timeout="auto" unmountOnExit>
+                        <Collapse in={expandedCard === data.date} timeout="auto" unmountOnExit>
                           <CardContent sx={{ bgcolor: '#FFFFFF' }}>
                             <Grid container spacing={2}>
                               <Grid item xs={12}>
                                 <DataTable
-                                  date={date}
+                                  date={data.date.replace(/\//g, '')}
                                   type="impressions_stats"
                                   partnerId={searchPartnerId}
                                 />
                               </Grid>
                               <Grid item xs={12}>
                                 <DataTable
-                                  date={date}
+                                  date={data.date.replace(/\//g, '')}
                                   type="bad_impressions"
                                   partnerId={searchPartnerId}
                                 />
