@@ -180,10 +180,10 @@ const PartnerAnalytics: React.FC = () => {
       for (const date of availableDates) {
         try {
           // Fetch impressions data
-          const impressionsResponse = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
-          if (impressionsResponse.ok) {
-            const impressionsData = await impressionsResponse.json();
-            const partnerData = impressionsData.find((row: any) => 
+          const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
+          if (response.ok) {
+            const data = await response.json();
+            const partnerData = data.find((row: any) => 
               String(row.partner_id || row.partnerId || row['partner id']).trim() === String(searchPartnerId).trim()
             );
             
@@ -331,7 +331,7 @@ const PartnerAnalytics: React.FC = () => {
       
       // Fetch data for all available dates
       for (const date of availableDates) {
-        const response = await fetch(`http://localhost:3001/api/impressions-count/${date}`);
+        const response = await fetch(`${API_BASE_URL}/api/impressions-count/${date}`);
         if (!response.ok) {
           throw new Error('Failed to fetch impressions data');
         }

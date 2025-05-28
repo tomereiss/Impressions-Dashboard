@@ -74,19 +74,32 @@ app.get('/api/available-dates', (req, res) => {
 app.get('/api/impressions-count/:date', (req, res) => {
   try {
     const { date } = req.params;
+    console.log(`[${new Date().toISOString()}] Received request for impressions count, date: ${date}`);
+    console.log(`[${new Date().toISOString()}] Request headers:`, req.headers);
+    
     const dataDir = path.join(getDataDir(), 'impressions-count');
+    console.log(`[${new Date().toISOString()}] Looking in directory: ${dataDir}`);
+    
     const files = fs.readdirSync(dataDir);
+    console.log(`[${new Date().toISOString()}] Found ${files.length} files in directory`);
+    
     // Look for files with either format: _date_report.csv or _date.csv
     const matchingFile = files.find(file => file.match(new RegExp(`_${date}(_report)?\\.csv$`)));
     if (!matchingFile) {
+      console.log(`[${new Date().toISOString()}] No matching file found for date: ${date}`);
       return res.status(404).json({ error: 'File not found' });
     }
+    
     const filePath = path.join(dataDir, matchingFile);
+    console.log(`[${new Date().toISOString()}] Reading file: ${filePath}`);
+    
     const data = readCSVFile(filePath);
+    console.log(`[${new Date().toISOString()}] Successfully read ${data.length} records`);
+    
     // Return the data exactly as it is in the CSV
     res.json(data);
   } catch (error) {
-    console.error(`Error getting impressions count for date ${req.params.date}:`, error);
+    console.error(`[${new Date().toISOString()}] Error getting impressions count for date ${req.params.date}:`, error);
     res.status(500).json({ error: 'Failed to get impressions count data' });
   }
 });
