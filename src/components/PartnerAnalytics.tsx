@@ -226,27 +226,33 @@ const PartnerAnalytics: React.FC = () => {
                 violation_count: partnerData.violation_count
               });
 
+              // Handle nan values
+              const impressionsCount = partnerData.impressions_count === 'nan' ? '0' : partnerData.impressions_count;
+              const badImpressionsCount = partnerData.bad_impressions_count === 'nan' ? '0' : partnerData.bad_impressions_count;
+              const percentage = partnerData.bad_from_total_in_percentage === 'nan' ? '0%' : partnerData.bad_from_total_in_percentage;
+              const violationCount = partnerData.violation_count === 'nan' ? '0' : partnerData.violation_count;
+
               weeklyData.push({
                 date: formatDateForDisplay(date),
-                impressions_count: partnerData.impressions_count,
-                bad_impressions_count: partnerData.bad_impressions_count,
-                bad_from_total_in_percentage: partnerData.bad_from_total_in_percentage,
-                violation_count: partnerData.violation_count
+                impressions_count: impressionsCount,
+                bad_impressions_count: badImpressionsCount,
+                bad_from_total_in_percentage: percentage,
+                violation_count: violationCount
               });
 
-              const badImpressions = parseInt(partnerData.bad_impressions_count) || 0;
-              const totalImpressions = parseInt(partnerData.impressions_count) || 0;
-              const percentage = totalImpressions > 0 ? (badImpressions / totalImpressions) * 100 : 0;
+              const badImpressions = parseInt(badImpressionsCount) || 0;
+              const totalImpressions = parseInt(impressionsCount) || 0;
+              const calculatedPercentage = totalImpressions > 0 ? (badImpressions / totalImpressions) * 100 : 0;
               
               console.log('Calculated daily percentage:', {
                 badImpressions,
                 totalImpressions,
-                percentage: percentage.toFixed(2) + '%'
+                percentage: calculatedPercentage.toFixed(2) + '%'
               });
 
               stats.push({
                 date: formatDateForDisplay(date),
-                percentage: parseFloat(percentage.toFixed(2)),
+                percentage: parseFloat(calculatedPercentage.toFixed(2)),
                 totalImpressions,
                 badImpressions
               });
@@ -421,8 +427,8 @@ const PartnerAnalytics: React.FC = () => {
         // Process each partner's data
         data.forEach((row: any) => {
           const partnerId = row.partner_id || row.partnerId || row['partner id'];
-          const impressionsCount = parseInt(row.impressions_count) || 0;
-          const badPercentage = parseFloat(row.bad_from_total_in_percentage) || 0;
+          const impressionsCount = parseInt(row.impressions_count === 'nan' ? '0' : row.impressions_count) || 0;
+          const badPercentage = parseFloat(row.bad_from_total_in_percentage === 'nan' ? '0' : row.bad_from_total_in_percentage.replace('%', '')) || 0;
           
           if (!partnerStats.has(partnerId)) {
             partnerStats.set(partnerId, { totalImpressions: [], badPercentages: [] });

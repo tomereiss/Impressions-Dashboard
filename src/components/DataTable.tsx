@@ -119,12 +119,19 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
             String(row.partner_id || row.partnerId || row['partner id']).trim() === String(partnerId).trim()
           )
         : impressionsData;
-      return filteredData.map(row => ({
-        partner_id: row.partner_id || row.partnerId || row['partner id'],
-        good_impressions_number: row.impressions_count,
-        bad_impressions_number: row.violation_count,
-        bad_from_total_in_percentage: row.bad_from_total_in_percentage,
-      }));
+      return filteredData.map(row => {
+        // Handle nan values and normalize column names
+        const impressionsCount = row.impressions_count === 'nan' ? '0' : row.impressions_count;
+        const violationCount = row.violation_count === 'nan' ? '0' : row.violation_count;
+        const percentage = row.bad_from_total_in_percentage === 'nan' ? '0%' : row.bad_from_total_in_percentage;
+        
+        return {
+          partner_id: row.partner_id || row.partnerId || row['partner id'],
+          good_impressions_number: impressionsCount,
+          bad_impressions_number: violationCount,
+          bad_from_total_in_percentage: percentage,
+        };
+      });
     } else {
       const filteredData = partnerId 
         ? badImpressionsData.filter(row => 
@@ -134,7 +141,7 @@ const DataTable: React.FC<DataTableProps> = ({ date, type, partnerId }) => {
       return filteredData.map(row => ({
         partner_id: row.partnerId,
         violation: row.violation,
-        violation_count: row.violation_count
+        violation_count: row.violation_count === 'nan' ? '0' : row.violation_count
       }));
     }
   };
